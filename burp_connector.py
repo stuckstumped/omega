@@ -1,12 +1,13 @@
 """
 Burp Suite Connector Module
 Handles all communication with Burp Suite REST API
+Gracefully handles Community Edition limitations
 """
 import requests
 import json
 import time
 from typing import Optional, Dict, List, Any
-from config import BURP_BASE_URL, BURP_API_KEY, TIMEOUT, RETRY_ATTEMPTS
+from config import BURP_BASE_URL, BURP_API_KEY, TIMEOUT, RETRY_ATTEMPTS, COMMUNITY_EDITION
 from urllib3.exceptions import InsecureRequestWarning
 import urllib3
 
@@ -70,7 +71,14 @@ class BurpConnector:
         """
         Start an active scan on a target URL
         scan_type: "all", "audit", "crawl"
+        Note: Not available in Burp Community Edition
         """
+        if COMMUNITY_EDITION:
+            return {
+                "error": "Active scanning is not available in Burp Suite Community Edition",
+                "status": "error",
+                "note": "Use Burp Professional or manually test with the AI-powered extension"
+            }
         payload = {
             "urls": [url],
             "scanConfigurations": [scan_type],
@@ -78,7 +86,16 @@ class BurpConnector:
         return self._request("POST", "/v1/scans", json=payload)
 
     def start_spider(self, url: str) -> Dict[str, Any]:
-        """Start web spidering on a target URL"""
+        """
+        Start web spidering on a target URL
+        Note: Not available in Burp Community Edition
+        """
+        if COMMUNITY_EDITION:
+            return {
+                "error": "Web spidering is not available in Burp Suite Community Edition",
+                "status": "error",
+                "note": "Use Burp Professional or manually browse to discover URLs"
+            }
         payload = {
             "urls": [url],
         }
@@ -89,7 +106,16 @@ class BurpConnector:
         return self._request("GET", f"/v1/scans/{scan_id}")
 
     def get_issues(self, url_filter: Optional[str] = None) -> Dict[str, Any]:
-        """Get identified security issues"""
+        """
+        Get identified security issues
+        Note: Limited availability in Burp Community Edition
+        """
+        if COMMUNITY_EDITION:
+            return {
+                "error": "Issue retrieval via API has limited support in Burp Suite Community Edition",
+                "status": "error",
+                "note": "Use the Burp UI Dashboard tab to view detected issues"
+            }
         endpoint = "/v1/issues"
         params = {}
         if url_filter:
@@ -97,7 +123,16 @@ class BurpConnector:
         return self._request("GET", endpoint, params=params)
 
     def get_proxy_history(self, limit: int = 50) -> Dict[str, Any]:
-        """Get recent proxy history entries"""
+        """
+        Get recent proxy history entries
+        Note: Limited availability in Burp Community Edition
+        """
+        if COMMUNITY_EDITION:
+            return {
+                "error": "Proxy history API has limited support in Burp Suite Community Edition",
+                "status": "error",
+                "note": "Use the Burp Proxy tab to browse history in the UI"
+            }
         return self._request("GET", "/v1/http-history", params={"limit": limit})
 
     def send_request(self, request_data: Dict[str, Any]) -> Dict[str, Any]:

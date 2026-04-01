@@ -5,7 +5,7 @@ Main agent that processes user requests and interacts with Burp Suite
 import sys
 from typing import Optional, Dict, Any
 from burp_connector import create_connector, BurpConnector
-from config import SUPPORTED_ACTIONS, VERBOSE_MODE
+from config import SUPPORTED_ACTIONS, VERBOSE_MODE, COMMUNITY_EDITION
 from ai_service import get_ai_service
 from system_prompt_manager import SystemPromptManager
 from colorama import Fore, Style, init
@@ -18,9 +18,9 @@ class BurpSuiteAgent:
     """AI Agent for interacting with Burp Suite"""
 
     def __init__(self):
-        self.connector:
+        self.connector: Optional[BurpConnector] = None
         self.ai_service = get_ai_service()
-        self.prompt_manager = SystemPromptManager() Optional[BurpConnector] = None
+        self.prompt_manager = SystemPromptManager()
         self.connected = False
         self.scans = {}
 
@@ -35,7 +35,13 @@ class BurpSuiteAgent:
                 return False
             
             self.connected = True
-            print(f"{Fore.GREEN}✓ Connected to Burp Suite{Style.RESET_ALL}")
+            edition = "Community" if COMMUNITY_EDITION else "Professional"
+            print(f"{Fore.GREEN}✓ Connected to Burp Suite ({edition} Edition){Style.RESET_ALL}")
+            
+            if COMMUNITY_EDITION:
+                print(f"{Fore.YELLOW}Note: Limited API features available. Focus on extension for AI analysis.{Style.RESET_ALL}")
+                print(f"{Fore.YELLOW}Type 'info' to see available commands.{Style.RESET_ALL}")
+            
             return True
         except Exception as e:
             print(f"{Fore.RED}✗ Connection error: {str(e)}{Style.RESET_ALL}")
@@ -72,6 +78,7 @@ class BurpSuiteAgent:
             "issues": self.handle_issues,
             "proxy": self.handle_proxy,
             "request": self.handle_request,
+            "info": self.handle_info,
             "help": self.handle_help,
             "quit": self.handle_quit,
         }
@@ -118,7 +125,9 @@ class BurpSuiteAgent:
             self.scans[scan_id] = {"url": url, "type": scan_type, "status": "running"}
             print(f"{Fore.GREEN}✓ Scan started (ID: {scan_id}){Style.RESET_ALL}")
         else:
-            print(f"{Fore.RED}✗ Scan failed: {result['error']}{Style.RESET_ALL}")
+            print(f"{Fore.RED}✗ {result['error']}{Style.RESET_ALL}")
+            if "note" in result:
+                print(f"{Fore.YELLOW}Note: {result['note']}{Style.RESET_ALL}")
 
         return result
 
@@ -135,7 +144,9 @@ class BurpSuiteAgent:
         if "error" not in result:
             print(f"{Fore.GREEN}✓ Spider started{Style.RESET_ALL}")
         else:
-            print(f"{Fore.RED}✗ Spider failed: {result['error']}{Style.RESET_ALL}")
+            print(f"{Fore.RED}✗ {result['error']}{Style.RESET_ALL}")
+            if "note" in result:
+                print(f"{Fore.YELLOW}Note: {result['note']}{Style.RESET_ALL}")
 
         return result
 
@@ -169,7 +180,9 @@ class BurpSuiteAgent:
             if len(issues) > 5:
                 print(f"  ... and {len(issues) - 5} more")
         else:
-            print(f"{Fore.RED}✗ Error: {result['error']}{Style.RESET_ALL}")
+            print(f"{Fore.RED}✗ {result['error']}{Style.RESET_ALL}")
+            if "note" in result:
+                print(f"{Fore.YELLOW}Note: {result['note']}{Style.RESET_ALL}")
 
         return result
 
@@ -183,7 +196,9 @@ class BurpSuiteAgent:
             entries = result.get("entries", [])
             print(f"{Fore.GREEN}✓ Found {len(entries)} entries{Style.RESET_ALL}")
         else:
-            print(f"{Fore.RED}✗ Error: {result['error']}{Style.RESET_ALL}")
+            print(f"{Fore.RED}✗ {result['error']}{Style.RESET_ALL}")
+            if "note" in result:
+                print(f"{Fore.YELLOW}Note: {result['note']}{Style.RESET_ALL}")
 
         return result
 
@@ -203,7 +218,42 @@ class BurpSuiteAgent:
             print(f"{Fore.RED}✗ Invalid JSON format{Style.RESET_ALL}")
             return {"status": "error", "message": "Invalid JSON"}
 
-    def handle_help(self, args: str) -> Dict[str, Any]:")
+    def handle_info(self, args: str) -> Dict[str, Any]:
+        """Display information about Burp edition and available features"""
+        edition = "Community" if COMMUNITY_EDITION else "Professional"
+        print(f"\n{Fore.CYAN}=== Burp Suite {edition} Edition ==={Style.RESET_ALL}")
+        
+        print(f"\n{Fore.GREEN}✓ Available Commands:{Style.RESET_ALL}")
+        for cmd, description in SUPPORTED_ACTIONS.items():
+            print(f"  {Fore.CYAN}{cmd:<15}{Style.RESET_ALL} - {description}")
+        
+        if COMMUNITY_EDITION:
+            print(f"\n{Fore.YELLOW}⚠ Community Edition Limitations:{Style.RESET_ALL}")
+            print(f"  {Fore.YELLOW}× Active scanning is not available{Style.RESET_ALL}")
+            print(f"  {Fore.YELLOW}× Web spidering is not available{Style.RESET_ALL}")
+            print(f"  {Fore.YELLOW}× Limited API access to issues and proxy history{Style.RESET_ALL}")
+            print(f"\n{Fore.GREEN}✓ What You CAN Do:{Style.RESET_ALL}")
+            print(f"  {Fore.GREEN}✓ Real-time AI traffic analysis with the Java extension{Style.RESET_ALL}")
+            print(f"  {Fore.GREEN}✓ Manual security testing with AI insights{Style.RESET_ALL}")
+            print(f"  {Fore.GREEN}✓ Custom system prompts and model selection{Style.RESET_ALL}")
+            print(f"  {Fore.GREEN}✓ Threat pattern detection (SQL injection, XSS, etc.){Style.RESET_ALL}")
+        else:
+            print(f"\n{Fore.GREEN}✓ Professional Edition Features:{Style.RESET_ALL}")
+            print(f"  {Fore.GREEN}✓ All Community Edition features{Style.RESET_ALL}")
+            print(f"  {Fore.GREEN}✓ Automated active scanning{Style.RESET_ALL}")
+            print(f"  {Fore.GREEN}✓ Web spidering and crawling{Style.RESET_ALL}")
+            print(f"  {Fore.GREEN}✓ Full API access to all scanning features{Style.RESET_ALL}")
+        
+        print(f"\n{Fore.CYAN}=== Quick Tips ==={Style.RESET_ALL}")
+        print(f"  1. Load the Java extension in Burp for real-time AI analysis")
+        print(f"  2. Configure model: {Fore.YELLOW}model use ollama llama2{Style.RESET_ALL}")
+        print(f"  3. Set system prompt: {Fore.YELLOW}prompt use owasp_expert{Style.RESET_ALL}")
+        print(f"  4. Type {Fore.YELLOW}help{Style.RESET_ALL} for more commands\n")
+        
+        return {"status": "success", "message": "Info displayed"}
+
+    def handle_help(self, args: str) -> Dict[str, Any]:
+        """Display available commands"""
         
         print(f"\n{Fore.CYAN}=== Model Selection ==={Style.RESET_ALL}")
         print(f"  {Fore.GREEN}{'model list':<20}{Style.RESET_ALL} - List available models")
@@ -320,7 +370,7 @@ class BurpSuiteAgent:
 
         else:
             print(f"{Fore.RED}✗ Unknown prompt command: {command}{Style.RESET_ALL}")
-            return {"status": "error", "message": f"Unknown command: {command}
+            return {"status": "error", "message": f"Unknown command: {command}"}
         print(f"\n{Fore.CYAN}=== Burp Suite Agent - Available Commands ==={Style.RESET_ALL}")
         for action, description in SUPPORTED_ACTIONS.items():
             print(f"  {Fore.GREEN}{action:<10}{Style.RESET_ALL} - {description}")
